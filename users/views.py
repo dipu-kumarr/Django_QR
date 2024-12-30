@@ -8,8 +8,8 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 import uuid
 
 class GetUserView(APIView):
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
+    # authentication_classes = [JWTAuthentication]
+    # permission_classes = [IsAuthenticated]
 
     def get(self, request):
         name = request.query_params.get('name')
@@ -41,8 +41,8 @@ class GetUserView(APIView):
 
     
 class SearchUserView(APIView):
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
+    # authentication_classes = [JWTAuthentication]
+    # permission_classes = [IsAuthenticated]
 
     def get(self, request):
         name = request.query_params.get('name')
@@ -69,8 +69,8 @@ class SearchUserView(APIView):
 
 
 class CreateQRUserLinkView(APIView):
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
+    # authentication_classes = [JWTAuthentication]
+    # permission_classes = [IsAuthenticated]
 
     def post(self, request):
         # Get user_id and qr_unique_id from the request data
@@ -91,6 +91,10 @@ class CreateQRUserLinkView(APIView):
             user = User.objects.get(id=user_id)
         except User.DoesNotExist:
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Check if the user is already linked with this QR unique ID
+        if QRUserLink.objects.filter(user=user, qr_unique_id=qr_unique_id).exists():
+            return Response({"message": "User is already mapped with this QR code"}, status=status.HTTP_200_OK)
 
         # Create a new QR user link
         qr_link = QRUserLink.objects.create(user=user, qr_unique_id=qr_unique_id)
