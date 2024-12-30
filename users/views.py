@@ -5,7 +5,7 @@ from .models import User, QRUserLink
 from .serializers import UserSerializer, QRUserLinkSerializer
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.authentication import JWTAuthentication
-
+import uuid
 
 class GetUserView(APIView):
     authentication_classes = [JWTAuthentication]
@@ -70,22 +70,33 @@ class SearchUserView(APIView):
 
 class CreateQRUserLinkView(APIView):
     authentication_classes = [JWTAuthentication]
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        user_data = request.data.get('user')
+        # Get user_id and qr_unique_id from the request data
+        user_id = request.data.get('user_id')
         qr_unique_id = request.data.get('qr_unique_id')
 
-        if not user_data or not qr_unique_id:
-            return Response({"error": "User details and QR unique ID are required"}, status=status.HTTP_400_BAD_REQUEST)
-        
-        user_serializer = UserSerializer(data=user_data)
-        if user_serializer.is_valid():
-            user = user_serializer.save()
-            qr_link = QRUserLink.objects.create(user=user, qr_unique_id=qr_unique_id)
-            qr_link_serializer = QRUserLinkSerializer(qr_link)
-            return Response(qr_link_serializer.data, status=status.HTTP_201_CREATED)
-        return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        if not user_id or not qr_unique_id:
+            return Response({"error": "User ID and QR unique ID are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Validate that user_id is a valid UUID
+        try:
+            user_id = uuid.UUID(user_id)  # Convert user_id to a UUID object for validation
+        except ValueError:
+            return Response({"error": "Invalid User ID format. It should be a valid UUID."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # Look up the user by the user_id (UUID)
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Create a new QR user link
+        qr_link = QRUserLink.objects.create(user=user, qr_unique_id=qr_unique_id)
+        qr_link_serializer = QRUserLinkSerializer(qr_link)
+
+        return Response(qr_link_serializer.data, status=status.HTTP_201_CREATED)
 
 class GetUserByQRIDView(APIView):
     def get(self, request, qr_unique_id):
